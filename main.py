@@ -106,8 +106,12 @@ with mp_hands.Hands(
 
           
           print("center_x, center_y: ", center_x, center_y)
-          new_img = image[center_y - 50: center_y + 50, center_x - 50: center_x + 50]
-          new_img = cv2.resize(new_img, dsize=(dist_x, dist_y))
+          if ((center_x + 50 > image_width or center_y + 50 > image_height) or
+	    (center_x - 50 < 0 or center_y - 50 < 0)):
+            continue
+          else:
+            new_img = image[center_y - 50: center_y + 50, center_x - 50: center_x + 50]
+            new_img = cv2.resize(new_img, dsize=(dist_x, dist_y))
           rnd = 0
           if dist_y % 2 == 0:
             rang_y = int(dist_y / 2)
@@ -120,8 +124,16 @@ with mp_hands.Hands(
             rang_x = int(dist_x / 2)
             rnd = 1
           print("new_img.shape: ", new_img.shape)
-          image[center_y - rang_y: center_y + rang_y + rnd, center_x - rang_x: center_x + rang_x + rnd] = new_img
-          cv2.imshow("a", new_img)
+          print("rang_x: ",center_x + rang_x + rnd)
+          print("rang_x: ",rang_x)
+          print("dist_x: ",dist_x)
+          print("dist_y: ",dist_y)
+          if ((center_y + rang_y + rnd > image_height or center_x + rang_x + rnd > image_width)
+	    or (center_y - rang_y < 0 or center_x - rang_x < 0)):
+            continue
+          else:
+            image[center_y - rang_y: center_y + rang_y + rnd, center_x - rang_x: center_x + rang_x + rnd] = new_img
+          #cv2.imshow("a", new_img)
         #print("x: ", hand_landmarks[4])
         #print("x: ", hand_landmarks[4])
         #print("x: ", hand_landmarks[4])
