@@ -105,6 +105,9 @@ i = 0
 zoom_flag = False
 center = 0
 center = 0
+threshold=100
+thresh_flag = False
+line_x = 500
 with mp_hands.Hands(
     model_complexity=0,
     min_detection_confidence=0.5,
@@ -117,8 +120,12 @@ with mp_hands.Hands(
       continue
 
     image_height, image_width, _ = image.shape
+    image_tmp = image
     # To improve performance, optionally mark the image as not writeable to
     # pass by reference.
+    cv2.line(image, pt1=(line_x, 0), pt2=(line_x, image_height),
+    	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
+    ret, image_thresh = cv2.threshold(image_tmp, threshold, 255, cv2.THRESH_BINARY)
     image.flags.writeable = False
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = hands.process(image)
@@ -126,6 +133,8 @@ with mp_hands.Hands(
     # Draw the hand annotations on the image.
     image.flags.writeable = True
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
+    image[:, :line_x] = np.array(image_thresh[1][:, :line_x])
     
     if results.multi_hand_landmarks:
       lnd_list = []
@@ -139,12 +148,28 @@ with mp_hands.Hands(
             for id, lm in enumerate(hand_landmarks.landmark):
               lnd_list.append([lm.x * image_width, lm.y * image_height])
             #print(lnd_list)
-            if dist(lnd_list[4], lnd_list[8]) < image_width / 40:
+            center_x = (lnd_list[4][0] + lnd_list[8][0]) / 2
+            print("center_x: ", center_x)
+            print("dist: ", dist(lnd_list[4], lnd_list[8]) < image_width / 40)
+            if dist(lnd_list[4], lnd_list[8]) < image_width / 30\
+                and center_x > line_x - 60 and center_x < line_x + 60:
+              thresh_flag = True
+              print("thresh_flag: ", thresh_flag)
+            elif dist(lnd_list[4], lnd_list[8]) < image_width / 40:
               print(i, "\n")
               i+=1
               print("here\n\n")
               zoom_flag = True
-            if zoom_flag:
+            if thresh_flag:
+              print("thresh_flag if")
+              if dist(lnd_list[4], lnd_list[8]) > image_width / 40:
+                thresh_flag = False
+              line_x = int((lnd_list[4][0] + lnd_list[8][0]) / 2)
+              cv2.line(image, pt1=(line_x, 0), pt2=(line_x, image_height),
+              	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
+              #ret, image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
+              image[:, :line_x] = image_thresh[1][:, :line_x]
+            if zoom_flag and not thresh_flag:
               center_x = int((lnd_list[4][0] + lnd_list[8][0]) / 2)
               center_y = int((lnd_list[4][1] + lnd_list[8][1]) / 2)
               dist_x = int(abs(lnd_list[4][0] - lnd_list[8][0]))
@@ -158,7 +183,7 @@ with mp_hands.Hands(
               
               print("center_x, center_y: ", center_x, center_y)
               if ((center_x + 50 > image_width or center_y + 50 > image_height) or
-	        (center_x - 50 < 0 or center_y - 50 < 0)):
+                (center_x - 50 < 0 or center_y - 50 < 0)):
                 continue
               else:
                 new_img = image[center_y - 50: center_y + 50, center_x - 50: center_x + 50]
@@ -200,6 +225,11 @@ with mp_hands.Hands(
         #print("x: ", hand_landmarks[4])
         #print("x: ", hand_landmarks[4])
         #print("y: ", hand_landmarks[4])
+        print("line_x: ", line_x)
+        print("image_thresh[1].shape: ", image_thresh[1].shape)
+        print("image_thresh[1]: ", image_thresh[1])
+        print("image_tmp.shape: ", image_tmp.shape)
+        #image[:, :line_x] = np.array(image_thresh[1][:, :line_x])
         mp_drawing.draw_landmarks(
             image,
             hand_landmarks,
