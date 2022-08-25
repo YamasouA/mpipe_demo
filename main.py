@@ -3,6 +3,36 @@ import mediapipe as mp
 import numpy as np
 import math
 
+def mosaic(img, alpha):
+	h, w, ch = img.shape
+
+	img = cv2.resize(img, (int(w*alpha), int(h*alpha)))
+	img = cv2.resize(img, (w, h), interpolation=cv2.INTER_NEAREST)
+
+	return img
+
+def decreaseColor(img):
+    dst = img.copy()
+    
+    idx = np.where((0<=img) & (32>img))
+    dst[idx] = 16
+    idx = np.where((32<=img) & (64>img))
+    dst[idx] = 48   
+    idx = np.where((64<=img) & (96>img))
+    dst[idx] = 80
+    idx = np.where((96<=img) & (128>img))
+    dst[idx] = 112
+    idx = np.where((128<=img) & (160>img))
+    dst[idx] = 144
+    idx = np.where((160<=img) & (192>img))
+    dst[idx] = 176
+    idx = np.where((192<=img) & (224>img))
+    dst[idx] = 208
+    idx = np.where((224<=img) & (256>=img))
+    dst[idx] = 240
+    
+    return dst
+
 def dist(lnd1, lnd2):
 	return ((lnd1[0] - lnd2[0]) ** 2 + (lnd1[1] - lnd2[1]) ** 2) ** 0.5
 	
@@ -103,11 +133,11 @@ with mp_hands.Hands(
 cap = cv2.VideoCapture(0)
 i = 0
 zoom_flag = False
-center = 0
-center = 0
-threshold=100
+dot_flag = False
 thresh_flag = False
+threshold=100
 line_x = 500
+line2_y = 300
 with mp_hands.Hands(
     model_complexity=0,
     min_detection_confidence=0.5,
@@ -125,7 +155,11 @@ with mp_hands.Hands(
     # pass by reference.
     cv2.line(image, pt1=(line_x, 0), pt2=(line_x, image_height),
     	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
-    ret, image_thresh = cv2.threshold(image_tmp, threshold, 255, cv2.THRESH_BINARY)
+    cv2.line(image, pt1=(0, line2_y), pt2=(image_width, line2_y),
+    	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
+    #ret, image_thresh = cv2.threshold(image_tmp, threshold, 255, cv2.THRESH_BINARY)
+    image_mosaic = mosaic(image_tmp, 0.2)
+    image_dot = decreaseColor(image_mosaic)
     image.flags.writeable = False
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = hands.process(image)
@@ -134,6 +168,7 @@ with mp_hands.Hands(
     image.flags.writeable = True
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
+    image[line2_y:, :] = np.array(image_dot[line2_y:, :])
     image[:, :line_x] = np.array(image_thresh[1][:, :line_x])
     
     if results.multi_hand_landmarks:
@@ -149,12 +184,16 @@ with mp_hands.Hands(
               lnd_list.append([lm.x * image_width, lm.y * image_height])
             #print(lnd_list)
             center_x = (lnd_list[4][0] + lnd_list[8][0]) / 2
+            center_y = (lnd_list[4][1] + lnd_list[8][1]) / 2
             print("center_x: ", center_x)
             print("dist: ", dist(lnd_list[4], lnd_list[8]) < image_width / 40)
             if dist(lnd_list[4], lnd_list[8]) < image_width / 30\
                 and center_x > line_x - 60 and center_x < line_x + 60:
               thresh_flag = True
               print("thresh_flag: ", thresh_flag)
+            elif dist(lnd_list[4], lnd_list[8]) < image_width / 30\
+                and center_y > line2_y- 60 and center_y < line2_y + 60:
+              dot_flag = True
             elif dist(lnd_list[4], lnd_list[8]) < image_width / 40:
               print(i, "\n")
               i+=1
@@ -169,6 +208,15 @@ with mp_hands.Hands(
               	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
               #ret, image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
               image[:, :line_x] = image_thresh[1][:, :line_x]
+            if dot_flag:
+              print("thresh_flag if")
+              if dist(lnd_list[4], lnd_list[8]) > image_width / 40:
+                dot_flag = False
+              line2_y = int((lnd_list[4][1] + lnd_list[8][1]) / 2)
+              cv2.line(image, pt1=(0, line2_y), pt2=(image_width, line2_y),
+              	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
+              #ret, image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
+              image[line2_y:, :] = np.array(image_dot[line2_y:, :])
             if zoom_flag and not thresh_flag:
               center_x = int((lnd_list[4][0] + lnd_list[8][0]) / 2)
               center_y = int((lnd_list[4][1] + lnd_list[8][1]) / 2)
