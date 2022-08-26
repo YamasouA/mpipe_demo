@@ -158,7 +158,7 @@ with mp_hands.Hands(
     cv2.line(image, pt1=(0, line2_y), pt2=(image_width, line2_y),
     	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
     #ret, image_thresh = cv2.threshold(image_tmp, threshold, 255, cv2.THRESH_BINARY)
-    image_mosaic = mosaic(image_tmp, 0.2)
+    image_mosaic = mosaic(image_tmp, 0.05)
     image_dot = decreaseColor(image_mosaic)
     image.flags.writeable = False
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -170,7 +170,8 @@ with mp_hands.Hands(
     image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
     image[line2_y:, :] = np.array(image_dot[line2_y:, :])
     image[:, :line_x] = np.array(image_thresh[1][:, :line_x])
-    
+    print("line_x: ", line_x)
+    print("line2_y: ", line2_y)
     if results.multi_hand_landmarks:
       lnd_list = []
       #print("\n ========================================\n\n")
@@ -204,19 +205,19 @@ with mp_hands.Hands(
               if dist(lnd_list[4], lnd_list[8]) > image_width / 40:
                 thresh_flag = False
               line_x = int((lnd_list[4][0] + lnd_list[8][0]) / 2)
-              cv2.line(image, pt1=(line_x, 0), pt2=(line_x, image_height),
-              	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
               #ret, image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
               image[:, :line_x] = image_thresh[1][:, :line_x]
+              cv2.line(image, pt1=(line_x, 0), pt2=(line_x, image_height),
+              	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
             if dot_flag:
               print("thresh_flag if")
               if dist(lnd_list[4], lnd_list[8]) > image_width / 40:
                 dot_flag = False
               line2_y = int((lnd_list[4][1] + lnd_list[8][1]) / 2)
-              cv2.line(image, pt1=(0, line2_y), pt2=(image_width, line2_y),
-              	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
               #ret, image_thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
               image[line2_y:, :] = np.array(image_dot[line2_y:, :])
+              cv2.line(image, pt1=(0, line2_y), pt2=(image_width, line2_y),
+              	color=(255, 0, 0), thickness=3, lineType=cv2.LINE_4, shift=0)
             if zoom_flag and not thresh_flag:
               center_x = int((lnd_list[4][0] + lnd_list[8][0]) / 2)
               center_y = int((lnd_list[4][1] + lnd_list[8][1]) / 2)
@@ -273,10 +274,6 @@ with mp_hands.Hands(
         #print("x: ", hand_landmarks[4])
         #print("x: ", hand_landmarks[4])
         #print("y: ", hand_landmarks[4])
-        print("line_x: ", line_x)
-        print("image_thresh[1].shape: ", image_thresh[1].shape)
-        print("image_thresh[1]: ", image_thresh[1])
-        print("image_tmp.shape: ", image_tmp.shape)
         #image[:, :line_x] = np.array(image_thresh[1][:, :line_x])
         mp_drawing.draw_landmarks(
             image,
