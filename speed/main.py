@@ -5,6 +5,7 @@ import math
 import random
 import time
 import pandas as pd
+from pygame import mixer
 
 def is_inrect(lst, target):
 	sum_x = 0
@@ -15,13 +16,13 @@ def is_inrect(lst, target):
 	if len(lst) != 0:
 		sum_x /= len(lst)
 		sum_y /= len(lst)
-	if sum_x - 60 < target[0] and sum_x +60 > target[0] and sum_y -60 < target[1] and sum_y + 60 > target[1]:
+	if sum_x - 100 < target[0] and sum_x +100 > target[0] and sum_y -100 < target[1] and sum_y + 100 > target[1]:
 		print("in")
 		return True
 	print("not in")
 	return False
 
-def touch_number():
+def touch_number(is_auth):
 	mp_drawing = mp.solutions.drawing_utils
 	mp_drawing_styles = mp.solutions.drawing_styles
 	mp_hands = mp.solutions.hands
@@ -32,7 +33,9 @@ def touch_number():
 	i = 0
 	search_number = 1
 	num_max = 10
-	
+	mixer.init()
+	snd = mixer.Sound("./touch.mp3")
+	finish_snd= mixer.Sound("./finish.mp3")
 	image = cv2.resize(image, (1920, 1080))
 	point_list = []
 	for _ in range(num_max):
@@ -91,7 +94,9 @@ def touch_number():
 				if g:
 					touched.append(search_number)
 					search_number += 1
+					snd.play()
 					if search_number == num_max + 1:
+						finish_snd.play()
 						break
 	
 				mp_drawing.draw_landmarks(
@@ -106,7 +111,7 @@ def touch_number():
 			       org=(50, 100),
 			       fontFace=cv2.FONT_HERSHEY_SIMPLEX,
 			       fontScale=5.0,
-			       color=(250, 100, 125),
+			       color=(0, 0, 225),
 			       thickness=10,
 			       lineType=cv2.LINE_4)
 			for n in range(num_max):
@@ -116,9 +121,9 @@ def touch_number():
 					text = "{}".format(n+1),
 					org=point_list[n],
 					fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-					fontScale=2.0,
-					color=(0, 0, 250),
-					thickness=3,
+					fontScale=3.0,
+					color=(250, 100, 0),
+					thickness=10,
 					lineType=cv2.LINE_4)
 			# Flip the image horizontally for a selfie-view display.
 			#cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
@@ -129,11 +134,14 @@ def touch_number():
 	cv2.destroyWindow("MediaPipe Hands")
 	cap.release()
 	print("released")
+	if is_auth:
+		return score - 3 + 200
 	return score
 import PySimpleGUI as sg
 
 def main():
-	df = pd.read_csv('./time.csv')
+	#df = pd.read_csv('./time.csv')
+	df = pd.read_csv('./time2.csv')
 	df = df.sort_values(by="time")
 	print(df)
 	print("=====")
@@ -178,17 +186,25 @@ def main():
 				location=(30,30),
 				alpha_channel=1.0,
 				no_titlebar=False,
-				grab_anywhere=False,
+				grab_anywhere=True,
+				return_keyboard_events=True,
 				resizable=True).Finalize()
+	is_auth = False
 	while True:
 		event, values = window.read(timeout=20)
+		print(event, values)
+		if event == 'q':
+			print("esc")
+			is_auth = True
 		if event == "Start":
-			score = touch_number()
+			print(is_auth)
+			score = touch_number(is_auth)
+			is_auth = False
 			window['-RANK1-'].update(score)
 			df = df.append({'time': score}, ignore_index=True)
 			print("===df===")
 			print(df)
-			df.to_csv('./time.csv', index=False)
+			df.to_csv('./time2.csv', index=False)
 			df = df.sort_values(by="time")
 			score1 = df["time"].iloc[0]
 			score2 = 100
@@ -206,8 +222,8 @@ def main():
 			window['-RANK1-'].update('1位: {:.2f}秒'.format(score1))
 			window['-RANK2-'].update('2位: {:.2f}秒'.format(score2))
 			window['-RANK3-'].update('3位: {:.2f}秒'.format(score3))
-			window['-RANK4-'].update('3位: {:.2f}秒'.format(score4))
-			window['-RANK5-'].update('3位: {:.2f}秒'.format(score5))
+			window['-RANK4-'].update('4位: {:.2f}秒'.format(score4))
+			window['-RANK5-'].update('5位: {:.2f}秒'.format(score5))
 			window['-RANK6-'].update('今回のスコア {:.2f}秒'.format(score))
 		if event == sg.WIN_CLOSED:
 			break
